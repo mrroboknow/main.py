@@ -8,7 +8,7 @@ class Client(BaseModel):
     id: int
     client_name: str
     client_code: str
-    nip: Optional[str] = None # Optional oznacza, że pole może nie istnieć w odpowiedzi
+    nip: Optional[str] = None
     company_address: Optional[str] = None
     delivery_address: Optional[str] = None
     delivery_name: Optional[str] = None
@@ -18,3 +18,8 @@ class Client(BaseModel):
     # Ta konfiguracja pozwala Pydanticowi czytać dane z obiektów SQLAlchemy
     class Config:
         from_attributes = True
+
+# Tutaj w przyszłości dodasz inne schematy, np. do tworzenia klienta
+# class ClientCreate(BaseModel):
+#     client_name: str
+#     ...
