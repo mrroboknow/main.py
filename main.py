@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from typing import List
 
 # Importujemy nasze moduły
-from . import models, schemas
-from .database import SessionLocal, engine
+import models
+import schemas
+from database import Base
 
 # Ta linia tworzy wszystkie tabele w bazie danych (jeśli jeszcze nie istnieją)
 # Na podstawie tego, co zdefiniowaliśmy w models.py
@@ -29,6 +30,7 @@ def get_clients(db: Session = Depends(get_db)):
     """
     Pobiera listę wszystkich klientów z bazy danych.
     """
+    # Dodajemy nazwę modułu przed nazwą klasy
     clients = db.query(models.Client).order_by(models.Client.client_name).all()
     return clients
 
