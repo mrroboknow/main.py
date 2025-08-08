@@ -5,37 +5,30 @@ import traceback
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from typing import List
-
-# Dodajemy logowanie, żeby widzieć więcej na serwerze
 import logging
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# POPRAWIONE IMPORTY (bez kropek)
-try:
-    log.info("Importowanie lokalnych modułów...")
-    import models
-    import schemas
-    from database import SessionLocal, engine
-    log.info("Importowanie zakończone sukcesem.")
-except ImportError as e:
-    log.error(f"KRYTYCZNY BŁĄD IMPORTU: {e}")
-    log.error(traceback.format_exc())
-    raise
+# Importujemy nasze moduły
+import models
+import schemas
+from database import SessionLocal, engine
 
-# Ta linia tworzy wszystkie tabele w bazie danych
+# Tworzenie tabel
 try:
-    log.info("Tworzenie tabel w bazie danych (jeśli nie istnieją)...")
+    log.info("Tworzenie tabel w bazie danych...")
     models.Base.metadata.create_all(bind=engine)
-    log.info("Tabele utworzone/sprawdzone pomyślnie.")
+    log.info("Tabele utworzone/sprawdzone.")
 except Exception as e:
-    log.error(f"KRYTYCZNY BŁĄD PODCZAS create_all: {e}")
+    log.error(f"BŁĄD PODCZAS create_all: {e}")
     log.error(traceback.format_exc())
     raise
 
+# Inicjalizacja aplikacji FastAPI
 app = FastAPI()
 
-# Funkcja pomocnicza do "wstrzykiwania" sesji bazy danych
+# Funkcja pomocnicza do sesji bazy danych
 def get_db():
     db = SessionLocal()
     try:
@@ -43,38 +36,32 @@ def get_db():
     finally:
         db.close()
 
-# --- ENDPOINTY ---
+# --- ENDPOINTY APLIKACJI ---
 
 @app.get("/api/clients", response_model=List[schemas.Client])
 def get_clients(db: Session = Depends(get_db)):
-    """
-    Pobiera listę wszystkich klientów z bazy danych.
-    """
-    log.info("Otrzymano zapytanie do /api/clients")
+    """Pobiera listę wszystkich klientów."""
+    log.info("Otrzymano zapytanie GET do /api/clients")
     clients = db.query(models.Client).order_by(models.Client.client_name).all()
-    log.info(f"Znaleziono {len(clients)} klientów w bazie.")
     return clients
 
-@app.post("/api/add-test-client")
-def add_test_client(db: Session = Depends(get_db)):
-    """
-    Dodaje jednego, testowego klienta do bazy.
-    """
-    log.info("Otrzymano zapytanie do /api/add-test-client")
-    existing_client = db.query(models.Client).filter(models.Client.client_code == "TEST.01").first()
-    if existing_client:
-        log.warning("Klient testowy już istnieje.")
-        return {"message": "Klient testowy już istnieje."}
+# TEN KOD MUSI BYĆ TUTAJ, W main.py
+@app.post("/api/clients", response_model=schemas.Client)
+def create_client(client: schemas.ClientCreate, db: Session = Depends(get_db)):
+    """Tworzy nowego klienta w bazie danych."""
+    log.info(f"Otrzymano zapytanie POST do /api/clients z danymi: {client.client_name}")
+    
+    # Sprawdzenie, czy klient o takim kodzie już nie istnieje (opcjonalne, ale dobre)
+    # existing_client = db.query(models.Client).filter(models.Client.client_code == client.client_code).first()
+    # if existing_client:
+    #     raise HTTPException(status_code=400, detail="Klient o tym kodzie już istnieje")
 
-    new_client = models.Client(
-        client_name="Klient Testowy",
-        client_code="TEST.01",
-        is_cynkownia=False
-    )
-    db.add(new_client)
+    db_client = models.Client(**client.dict())
+    db.add(db_client)
     db.commit()
-    db.refresh(new_client)
-    log.info("Dodano nowego klienta testowego.")
-    return {"message": "Dodano klienta testowego.", "client": new_client.client_name}
+    db.refresh(db_client)
+    
+    log.info(f"Pomyślnie utworzono klienta z ID: {db_client.id}")
+    return db_client
 
-log.info("Aplikacja FastAPI została zainicjowana i jest gotowa do przyjmowania zapytań.")
+log.info("Aplikacja FastAPI zainicjowana.")
