@@ -19,7 +19,19 @@ class Client(BaseModel):
     class Config:
         from_attributes = True
 
-# Tutaj w przyszłości dodasz inne schematy, np. do tworzenia klienta
-# class ClientCreate(BaseModel):
-#     client_name: str
-#     ...
+@app.post("/api/clients", response_model=schemas.Client)
+def create_client(client: schemas.ClientCreate, db: Session = Depends(get_db)):
+    """
+    Tworzy nowego klienta w bazie danych.
+    """
+    log.info(f"Otrzymano prośbę o utworzenie klienta: {client.client_name}")
+    
+    # Tworzymy obiekt bazy danych na podstawie otrzymanych danych
+    db_client = models.Client(**client.dict())
+    
+    db.add(db_client)
+    db.commit()
+    db.refresh(db_client) # Odśwież, aby pobrać ID z bazy
+    
+    log.info(f"Pomyślnie utworzono klienta z ID: {db_client.id}")
+    return db_client
